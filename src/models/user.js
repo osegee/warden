@@ -8,8 +8,8 @@ const findUserByEmail = async (email) => {
   return result.rows[0];
 };
 
-const createUser = async (username, email, password) => {
-  const result = await pool.query(
+const createUser = async (username, email, password, client = pool) => {
+  const result = await client.query(
     `INSERT INTO users (username, email, password) VALUES($1, $2, $3) RETURNING id, username, email, is_verified, created_at`,
     [username, email.toLowerCase(), password],
   );

@@ -1,7 +1,7 @@
 import { pool } from "../config/db.js";
 
-const createOtp = async (user_id, code, purpose, expires_at) => {
-  const result = await pool.query(
+const createOtp = async (user_id, code, purpose, expires_at, client = pool) => {
+  const result = await pool.client(
     `INSERT INTO otp_codes (user_id, code, purpose, expires_at) VALUES($1, $2, $3, $4) RETURNING * `,
     [user_id, code, purpose, expires_at],
   );
