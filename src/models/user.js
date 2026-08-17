@@ -17,4 +17,11 @@ const createUser = async (username, email, password, client = pool) => {
   return result.rows[0];
 };
 
-export { findUserByEmail, createUser };
+const verifyUser = async (user_id) => {
+  const result = await pool.query(
+    ` UPDATE users SET is_verified = true WHERE sid = $1`,
+    [user_id],
+  );
+};
+
+export { findUserByEmail, createUser, verifyUser };
