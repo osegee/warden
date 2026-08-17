@@ -1,20 +1,24 @@
+import "dotenv/config";
 import express from "express";
-import dotenv from "dotenv";
 import morgan from "morgan";
-import AuthRoutes from "./src/routes/auth.routes.js";
-
-dotenv.config();
+import { connectDB } from "./src/config/db.js";
+import authRouter from "./src/routes/auth.routes.js";
 
 const app = express();
+
 app.use(express.json());
-app.use("/auth", AuthRoutes);
-app.use(morgan("dev"));
+process.env.NODE_ENV === "production"
+  ? app.use(morgan("combined"))
+  : app.use(morgan("dev"));
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
+app.use("/api/auth", authRouter);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+connectDB()
+  .then(() => {
+    app.listen(PORT, () => console.log(`server is running on port ${PORT}`));
+  })
+  .catch((error) => console.error(error));
