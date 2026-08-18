@@ -1,8 +1,13 @@
 import { sendOtpEmail } from "../utils/email.js";
 import { generateOtp, hashOtp } from "../utils/otp.js";
 import { hashPassword, comparePassword } from "../utils/hash.js";
-import { createUser, findUserByEmail } from "../models/user.js";
-import { createOtp } from "../models/otp.js";
+import { createUser, findUserByEmail, verifyUser } from "../models/user.js";
+import {
+  createOtp,
+  findOtpByUserAndPurpose,
+  incrementOtpAttempts,
+  markOtpAsUsed,
+} from "../models/otp.js";
 import { createToken } from "../models/token.js";
 import { signAccessToken, signRefreshToken } from "../utils/jwt.js";
 import { pool } from "../config/db.js";
@@ -67,67 +72,149 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   const expires_in = 7;
   const expires_at = new Date(Date.now() + expires_in * 24 * 60 * 60 * 1000);
-  const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "please enter email and password",
+      });
+    }
+
+    const user = await findUserByEmail(email);
+    if (!user) {
+      return res.status(409).json({
+        success: false,
+        message: "user doesn't exist",
+      });
+    }
+
+    if (!user.is_verified) {
+      return res.status(403).json({
+        success: false,
+        message: "please verify your email",
+      });
+    }
+
+    const isMatch = await comparePassword(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "incorrect password!",
+      });
+    }
+
+    const accessToken = signAccessToken(user.id);
+    const refreshToken = signRefreshToken(user.id);
+
+    await createToken(
+      user.id,
+      refreshToken,
+      req.ip,
+      req.headers["user-agent"],
+      expires_at,
+    );
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "user login successful",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
       success: false,
-      message: "please enter email and password",
+      message: "internal server error",
     });
   }
-
-  const user = await findUserByEmail(email);
-  if (!user) {
-    return res.status(409).json({
-      success: false,
-      message: "user doesn't exist",
-    });
-  }
-
-  if (!user.is_verified) {
-    return res.status(403).json({
-      success: false,
-      message: "please verify your email",
-    });
-  }
-
-  const isMatch = await comparePassword(password, user.password);
-  if (!isMatch) {
-    return res.status(401).json({
-      success: false,
-      message: "incorrect password!",
-    });
-  }
-
-  const accessToken = signAccessToken(user.id);
-  const refreshToken = signRefreshToken(user.id);
-
-  await createToken(
-    user.id,
-    refreshToken,
-    req.ip,
-    req.headers["user-agent"],
-    expires_at,
-  );
-
-  res.cookie("accessToken", accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: 15 * 60 * 1000,
-  });
-
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
-
-  return res.status(200).json({
-    success: true,
-    message: "user login successful",
-  });
 };
 
-export { register, login };
+const verifyEmail = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!otp || !email) {
+      return res.status(400).json({
+        success: false,
+        message: "please enter otp",
+      });
+    }
+
+    const user = await findUserByEmail(email);
+    if (!user) {
+      return res.status(409).json({
+        success: false,
+        message: "user doesn't exist, please register",
+      });
+    }
+
+    const otpRecord = await findOtpByUserAndPurpose(user.id, "verify_email");
+    if (!otpRecord) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP not found, request a new one",
+      });
+    }
+
+    if (otpRecord.is_used) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP already used",
+      });
+    }
+
+    if (new Date() > new Date(otpRecord.expires_at)) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired, request a new one",
+      });
+    }
+
+    if (otpRecord.attempts >= 3) {
+      return res.status(400).json({
+        success: false,
+        message: "too many attempts, request a new OTP",
+      });
+    }
+
+    const hashedCode = hashOtp(otp);
+    if (hashedCode !== otpRecord.code) {
+      await incrementOtpAttempts(otpRecord.id);
+      return res.status(400).json({
+        success: false,
+        message: "invalid OTP",
+      });
+    }
+
+    await markOtpAsUsed(otpRecord.id);
+
+    await verifyUser(user.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Email verification successful",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+export { register, login, verifyEmail };
