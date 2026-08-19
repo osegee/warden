@@ -17,6 +17,15 @@ process.env.NODE_ENV === "production"
   ? app.use(morgan("combined"))
   : app.use(morgan("dev"));
 
+app.get("/", (req, res) => {
+  res.json({
+    name: "Warden",
+    description: "Authentication & Authorization API",
+    status: "active",
+    version: "1.0.0",
+  });
+});
+
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });

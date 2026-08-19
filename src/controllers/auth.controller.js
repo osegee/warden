@@ -357,10 +357,11 @@ const resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
 
-    if ((!email, otp, newPassword)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "please include password" });
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "please include all required fields",
+      });
     }
 
     const user = await findUserByEmail(email);

@@ -25,9 +25,8 @@ const verifyUser = async (user_id, client = pool) => {
 };
 const updatePassword = async (password, user_id) => {
   const result = await pool.query(
-    `UPDATE users SET password = $1, updated_at = NOW() WHERE user_id = $2`[
-      (password, user_id)
-    ],
+    `UPDATE users SET password = $1, updated_at = NOW() WHERE id = $2`,
+    [password, user_id],
   );
   return result.rows[0];
 };

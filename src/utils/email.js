@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 const transport = nodemailer.createTransport({
   host: process.env.BREVO_SMTP_HOST,
   port: process.env.SMTP_PORT,
+  secure: true, // true for 465, false for other portss
   auth: {
     user: process.env.SENDER_EMAIL,
     pass: process.env.BREVO_API_KEY,

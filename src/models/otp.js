@@ -9,7 +9,7 @@ const createOtp = async (user_id, code, purpose, expires_at, client = pool) => {
 };
 const findOtpByUserAndPurpose = async (user_id, purpose) => {
   const result = await pool.query(
-    `SELECT * FROM otp_codes WHERE user_id = $1 AND purpose = $2`,
+    `SELECT * FROM otp_codes WHERE user_id = $1 AND purpose = $2 ORDER BY created_at DESC LIMIT 1`,
     [user_id, purpose],
   );
   return result.rows[0];
