@@ -14,8 +14,8 @@ const findOtpByUserAndPurpose = async (user_id, purpose) => {
   );
   return result.rows[0];
 };
-const markOtpAsUsed = async (otp_id) => {
-  const result = await pool.query(
+const markOtpAsUsed = async (otp_idc, client = pool) => {
+  const result = await client.query(
     `UPDATE otp_codes SET is_used = true WHERE id = $1`,
     [otp_id],
   );
@@ -29,9 +29,17 @@ const incrementOtpAttempts = async (otp_id) => {
   return result.rows[0];
 };
 
+const invalidateOtps = async (user_id, purpose) => {
+  const result = await pool.query(
+    `UPDATE otp_codes SET is_used = true WHERE user_id = $1 AND purpose = $2`,
+    [user_id, purpose],
+  );
+};
+
 export {
   createOtp,
   findOtpByUserAndPurpose,
   markOtpAsUsed,
   incrementOtpAttempts,
+  invalidateOtps,
 };

@@ -17,8 +17,8 @@ const createUser = async (username, email, password, client = pool) => {
   return result.rows[0];
 };
 
-const verifyUser = async (user_id) => {
-  const result = await pool.query(
+const verifyUser = async (user_id, client = pool) => {
+  const result = await client.query(
     ` UPDATE users SET is_verified = true WHERE id = $1`,
     [user_id],
   );
