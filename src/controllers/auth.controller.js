@@ -6,6 +6,7 @@ import {
   createOtp,
   findOtpByUserAndPurpose,
   incrementOtpAttempts,
+  invalidateOtps,
   markOtpAsUsed,
 } from "../models/otp.js";
 import { createToken } from "../models/token.js";
@@ -144,6 +145,7 @@ const login = async (req, res) => {
 };
 
 const verifyEmail = async (req, res) => {
+  const client = await pool.connect();
   try {
     const { email, otp } = req.body;
 
@@ -200,21 +202,74 @@ const verifyEmail = async (req, res) => {
       });
     }
 
+    await client.query("BEGIN");
     await markOtpAsUsed(otpRecord.id);
-
     await verifyUser(user.id);
+    await client.query("COMMIT");
 
     return res.status(200).json({
       success: true,
       message: "Email verification successful",
     });
   } catch (error) {
+    await client.query("ROLLBACK");
     console.error(error);
     return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  } finally {
+    await client.release();
+  }
+};
+
+const resendEmail = async (req, res) => {
+  try {
+    const { email, purpose } = req.body;
+
+    if (!email || !purpose) {
+      return res.status(400).json({
+        succcess: false,
+        message: "email and purpose required",
+      });
+    }
+
+    const user = await user.findUserByEmail(email);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "user not found",
+      });
+    }
+
+    if (purpose === "verify_email" && user.is_verified) {
+      return res.status(400).json({
+        success: false,
+        message: "User already verified",
+      });
+    }
+
+    const expires_at = new Date(Date.now() + 10 * 60 * 1000);
+    const otp = generateOtp();
+    const otp_hash = hashOtp(otp);
+
+    await invalidateOtps(user.id, purpose);
+    await createOtp(user.id, otp_hash, purpose, expires_at);
+    await sendOtpEmail(email, otp);
+
+    return res.status(200).json({
+      succcess: true,
+      message: "OTP sent successfully",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
       success: false,
       message: "Internal server error",
     });
   }
 };
 
-export { register, login, verifyEmail };
+
+
+export { register, login, verifyEmail, resendEmail };
