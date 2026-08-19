@@ -1,7 +1,12 @@
 import { sendOtpEmail } from "../utils/email.js";
 import { generateOtp, hashOtp } from "../utils/otp.js";
 import { hashPassword, comparePassword } from "../utils/hash.js";
-import { createUser, findUserByEmail, verifyUser } from "../models/user.js";
+import {
+  createUser,
+  findUserByEmail,
+  updatePassword,
+  verifyUser,
+} from "../models/user.js";
 import {
   createOtp,
   findOtpByUserAndPurpose,
@@ -12,6 +17,7 @@ import {
 import { createToken, findRefreshToken, revokeToken } from "../models/token.js";
 import { signAccessToken, signRefreshToken } from "../utils/jwt.js";
 import { pool } from "../config/db.js";
+import { response } from "express";
 
 const register = async (req, res) => {
   const client = await pool.connect();
@@ -347,7 +353,76 @@ const forgotPassword = async (req, res) => {
   }
 };
 
+const resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
 
+    if ((!email, otp, newPassword)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "please include password" });
+    }
+
+    const user = await findUserByEmail(email);
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "user not found",
+      });
+    }
+    const otpRecord = await findOtpByUserAndPurpose(user.id, "reset_password");
+    if (!otpRecord) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP not found, request a new one",
+      });
+    }
+
+    if (otpRecord.is_used) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP already used",
+      });
+    }
+
+    if (new Date() > new Date(otpRecord.expires_at)) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired, request a new one",
+      });
+    }
+
+    if (otpRecord.attempts >= 3) {
+      return res.status(400).json({
+        success: false,
+        message: "too many attempts, request a new OTP",
+      });
+    }
+
+    const hashedOtp = hashOtp(otp);
+    if (hashedOtp !== otpRecord.code) {
+      await incrementOtpAttempts(otpRecord.id);
+      return res.status(400).json({
+        success: false,
+        message: "invalid OTP",
+      });
+    }
+
+    const hashedPassword = await hashPassword(newPassword);
+    await markOtpAsUsed(otpRecord.id);
+    await updatePassword(hashedPassword, user.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "password reset successful",
+    });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ success: false, message: "internal server error" });
+  }
+};
 
 export {
   register,
@@ -356,5 +431,5 @@ export {
   resendEmail,
   logout,
   forgotPassword,
-  forgotPassword,
+  resetPassword,
 };
