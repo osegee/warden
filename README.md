@@ -1,95 +1,316 @@
-# Warden
+# Warden 🛡️
 
-A lightweight authentication API built with Node.js, Express, and PostgreSQL — featuring email OTP verification on signup and JWT access/refresh token rotation.
+A production-ready authentication REST API built with Node.js, Express, and PostgreSQL. Warden handles the full authentication lifecycle including registration, email verification, login, password reset, and session management.
+
+---
 
 ## Features
 
-- **Signup with email verification** — users register, receive a one-time password via email (Nodemailer), and verify before gaining full access
-- **JWT authentication** — short-lived access tokens paired with long-lived, revocable refresh tokens
-- **Secure by default** — passwords and OTPs are hashed before storage, OTPs expire and are rate-limited against brute-force attempts
-- **PostgreSQL** — relational schema with proper foreign keys and cascading deletes
+- User registration with email OTP verification
+- Secure login with JWT access and refresh tokens
+- Cookie-based authentication (httpOnly, secure, sameSite)
+- Password hashing with bcrypt (12 salt rounds)
+- OTP hashing with SHA-256
+- Refresh token rotation with device tracking (IP + User-Agent)
+- Forgot password and reset password flow
+- Resend OTP support for both email verification and password reset
+- Logout with token revocation
+- Brute-force protection (max 3 OTP attempts)
+- OTP expiry (10 minutes)
+- Transaction-safe DB operations (atomic user + OTP creation)
+- Morgan request logging (dev/combined by environment)
+- Helmet security headers
+- CORS support
+- Rate limiting ready
 
-## Tech stack
+---
 
-| Layer | Tool |
-|---|---|
-| Runtime | Node.js |
-| Framework | Express |
-| Database | PostgreSQL (`node-pg`) |
-| Email | Nodemailer |
-| Auth | JWT (access + refresh tokens) |
+## Tech Stack
 
-## Schema
+| Layer            | Technology                       |
+| ---------------- | -------------------------------- |
+| Runtime          | Node.js v24+                     |
+| Framework        | Express.js                       |
+| Database         | PostgreSQL                       |
+| ORM              | Raw SQL via `pg` (node-postgres) |
+| Authentication   | JWT (jsonwebtoken)               |
+| Password Hashing | bcrypt                           |
+| OTP Hashing      | Node.js crypto (SHA-256)         |
+| Email            | Nodemailer + Brevo SMTP          |
+| Environment      | dotenv                           |
+| Logging          | Morgan                           |
+| Security         | Helmet, CORS                     |
+| Dev Server       | Nodemon                          |
 
-**users** — id, full_name, email, password_hash, is_verified, created_at, updated_at
-**otps** — id, user_id (FK), otp_hash, expires_at, is_used, attempts
-**refresh_tokens** — id, user_id (FK), token_hash, expires_at, revoked, created_at
+---
 
-See [`schema.sql`](./schema.sql) for the full DDL.
+## Project Structure
 
-## API endpoints
+```
+warden/
+├── src/
+│   ├── config/
+│   │   ├── db.js            # PostgreSQL pool + connectDB
+│   │   └── migrate.js       # Database migration runner
+│   ├── controllers/
+│   │   └── auth.controller.js  # All auth route handlers
+│   ├── middlewares/         # Auth guards, rate limiting
+│   ├── models/
+│   │   ├── user.js          # User DB queries
+│   │   ├── otp.js           # OTP DB queries
+│   │   └── token.js         # Refresh token DB queries
+│   ├── routes/
+│   │   └── auth.routes.js   # Auth route definitions
+│   ├── utils/
+│   │   ├── email.js         # Nodemailer transporter + sendOtpEmail
+│   │   ├── hash.js          # bcrypt hashPassword + comparePassword
+│   │   ├── jwt.js           # signAccessToken, signRefreshToken, verifyToken
+│   │   └── otp.js           # generateOtp + hashOtp
+│   └── validators/          # Zod input validation schemas
+├── .env
+├── .env.example
+├── .gitignore
+├── package.json
+├── README.md
+└── server.js
+```
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/signup` | Create a new user, send OTP to email |
-| `POST` | `/verify-otp` | Verify OTP, activate account |
-| `POST` | `/resend-otp` | Request a new OTP (rate-limited) |
-| `POST` | `/login` | Authenticate, receive access + refresh tokens |
-| `POST` | `/refresh` | Exchange refresh token for a new access token |
-| `POST` | `/logout` | Revoke a refresh token |
+---
 
-## Getting started
+## Database Schema
+
+### `users`
+
+| Column      | Type         | Notes                       |
+| ----------- | ------------ | --------------------------- |
+| id          | UUID         | Primary key, auto-generated |
+| username    | VARCHAR(50)  | Not null                    |
+| email       | VARCHAR(255) | Unique, not null            |
+| password    | TEXT         | bcrypt hashed               |
+| is_verified | BOOLEAN      | Defaults to false           |
+| created_at  | TIMESTAMPTZ  | Defaults to NOW()           |
+| updated_at  | TIMESTAMPTZ  | Defaults to NOW()           |
+
+### `otp_codes`
+
+| Column     | Type        | Notes                              |
+| ---------- | ----------- | ---------------------------------- |
+| id         | UUID        | Primary key                        |
+| user_id    | UUID        | FK → users(id)                     |
+| code       | TEXT        | SHA-256 hashed OTP                 |
+| purpose    | ENUM        | `verify_email` or `reset_password` |
+| attempts   | INTEGER     | Defaults to 0, max 3               |
+| is_used    | BOOLEAN     | Defaults to false                  |
+| expires_at | TIMESTAMPTZ | 10 minutes from creation           |
+| created_at | TIMESTAMPTZ | Defaults to NOW()                  |
+
+### `refresh_tokens`
+
+| Column     | Type        | Notes                  |
+| ---------- | ----------- | ---------------------- |
+| id         | UUID        | Primary key            |
+| user_id    | UUID        | FK → users(id)         |
+| token      | TEXT        | Full JWT refresh token |
+| is_revoked | BOOLEAN     | Defaults to false      |
+| ip_address | TEXT        | Client IP              |
+| user_agent | TEXT        | Client device info     |
+| expires_at | TIMESTAMPTZ | 7 days from creation   |
+| created_at | TIMESTAMPTZ | Defaults to NOW()      |
+
+---
+
+## API Endpoints
+
+Base URL: `/api/v1/auth`
+
+| Method | Endpoint           | Description                  | Auth Required |
+| ------ | ------------------ | ---------------------------- | ------------- |
+| POST   | `/register`        | Register new user + send OTP | No            |
+| POST   | `/login`           | Login + set auth cookies     | No            |
+| POST   | `/verify-email`    | Verify email with OTP        | No            |
+| POST   | `/resend-otp`      | Resend OTP (verify or reset) | No            |
+| POST   | `/forgot-password` | Request password reset OTP   | No            |
+| POST   | `/reset-password`  | Reset password with OTP      | No            |
+| POST   | `/logout`          | Logout + revoke token        | Yes           |
+| POST   | `/refresh-token`   | Get new access token         | Yes           |
+| DELETE | `/delete-account`  | Delete user account          | Yes           |
+
+---
+
+## Request & Response Examples
+
+### POST `/register`
+
+```json
+// Request
+{
+  "username": "osegie",
+  "email": "osegie@gmail.com",
+  "password": "securepass123"
+}
+
+// Response 201
+{
+  "success": true,
+  "message": "Registration successful, check your email for OTP"
+}
+```
+
+### POST `/login`
+
+```json
+// Request
+{
+  "email": "osegie@gmail.com",
+  "password": "securepass123"
+}
+
+// Response 200 (sets httpOnly cookies)
+{
+  "success": true,
+  "message": "User login successful"
+}
+```
+
+### POST `/verify-email`
+
+```json
+// Request
+{
+  "email": "osegie@gmail.com",
+  "otp": "482910"
+}
+
+// Response 200
+{
+  "success": true,
+  "message": "Email verification successful"
+}
+```
+
+### POST `/forgot-password`
+
+```json
+// Request
+{
+  "email": "osegie@gmail.com"
+}
+
+// Response 200
+{
+  "success": true,
+  "message": "OTP sent successfully"
+}
+```
+
+### POST `/reset-password`
+
+```json
+// Request
+{
+  "email": "osegie@gmail.com",
+  "otp": "193847",
+  "newPassword": "newsecurepass456"
+}
+
+// Response 200
+{
+  "success": true,
+  "message": "Password reset successful"
+}
+```
+
+---
+
+## Environment Variables
+
+Create a `.env` file in the root directory:
+
+```bash
+# Server
+PORT=5000
+NODE_ENV=development
+CLIENT_URL=http://localhost:3000
+
+# Database
+DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/warden
+
+# JWT
+JWT_ACCESS_SECRET=your_access_secret
+JWT_ACCESS_EXPIRES_IN=15m
+JWT_REFRESH_SECRET=your_refresh_secret
+JWT_REFRESH_EXPIRES_IN=7d
+
+# Brevo SMTP
+BREVO_SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SENDER_EMAIL=your_brevo_login@smtp-relay.brevo.com
+BREVO_API_KEY=your_brevo_api_key
+EMAIL_FROM=Warden <your@email.com>
+```
+
+---
+
+## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js v18+
 - PostgreSQL 14+
-- An SMTP account for Nodemailer (e.g. Gmail app password, SendGrid, Mailtrap for dev)
+- Brevo account (for email)
 
-### Setup
+### Installation
 
 ```bash
-git clone https://github.com/<your-username>/warden.git
+# Clone the repository
+git clone https://github.com/yourusername/warden.git
 cd warden
+
+# Install dependencies
 npm install
-```
 
-Create a `.env` file:
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your credentials
 
-```env
-DATABASE_URL=postgres://user:pass@localhost:5432/warden
-JWT_ACCESS_SECRET=your_access_secret
-JWT_REFRESH_SECRET=your_refresh_secret
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_USER=your_smtp_user
-SMTP_PASS=your_smtp_pass
-```
+# Run database migrations
+node src/config/migrate.js
 
-Run the schema against your database:
-
-```bash
-psql $DATABASE_URL -f schema.sql
-```
-
-Start the server:
-
-```bash
+# Start development server
 npm run dev
 ```
 
-## Design decisions
+### Scripts
 
-- **OTPs live in their own table**, not as columns on `users` — this preserves history for rate-limiting and avoids race conditions when a user requests multiple codes.
-- **OTPs and tokens are hashed at rest** — a database leak shouldn't hand out valid credentials.
-- **Refresh tokens are revocable** — logging out (or detecting a compromised token) flips `revoked = true` rather than relying on expiry alone.
+```bash
+npm run dev    # Start with nodemon (development)
+npm start      # Start with node (production)
+npm run migrate # Run database migrations
+```
 
-## Roadmap
+---
 
-- [ ] Password reset flow (reusing the `otps` pattern)
-- [ ] Rate limiting middleware
-- [ ] Login-attempt lockout
-- [ ] Docker Compose for local Postgres
+## Security Considerations
+
+- Passwords hashed with bcrypt at 12 salt rounds
+- OTP codes hashed with SHA-256 before storage
+- JWT tokens stored in httpOnly cookies (not localStorage)
+- Separate secrets for access and refresh tokens
+- Refresh tokens stored in DB and revoked on logout
+- OTP brute-force protection (3 attempts max)
+- OTP expiry (10 minutes)
+- Helmet.js for secure HTTP headers
+- CORS configured with credentials support
+- Environment-based cookie security (secure flag in production)
+
+---
+
+## Author
+
+**Osegie** — Backend Developer  
+GitHub: [@osegee](https://github.com/osegee)
+
+---
 
 ## License
 
