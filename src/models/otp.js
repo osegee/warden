@@ -14,7 +14,7 @@ const findOtpByUserAndPurpose = async (user_id, purpose) => {
   );
   return result.rows[0];
 };
-const markOtpAsUsed = async (otp_idc, client = pool) => {
+const markOtpAsUsed = async (otp_id, client = pool) => {
   const result = await client.query(
     `UPDATE otp_codes SET is_used = true WHERE id = $1`,
     [otp_id],

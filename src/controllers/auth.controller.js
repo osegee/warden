@@ -9,7 +9,7 @@ import {
   invalidateOtps,
   markOtpAsUsed,
 } from "../models/otp.js";
-import { createToken } from "../models/token.js";
+import { createToken, findRefreshToken, revokeToken } from "../models/token.js";
 import { signAccessToken, signRefreshToken } from "../utils/jwt.js";
 import { pool } from "../config/db.js";
 
@@ -270,6 +270,91 @@ const resendEmail = async (req, res) => {
   }
 };
 
+const logout = async (req, res) => {
+  try {
+    const refresh_token = req.cookies.refreshToken;
+
+    if (!refresh_token) {
+      return res.status(404).json({
+        success: false,
+        message: "Token not found",
+      });
+    }
+    const token = await findRefreshToken(refresh_token);
+    if (!token) {
+      return res.status(404).json({
+        success: false,
+        message: "Token not found",
+      });
+    }
+    await revokeToken(token.id);
+
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+    });
+
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    console.error("Logout error", error);
+    return res.status(500).json({
+      success: false,
+      message: "internal server error",
+    });
+  }
+};
+
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await findUserByEmail(email);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    await invalidateOtps(user.id, "reset_password");
+    const otp = generateOtp();
+    const otp_hash = hashOtp(otp);
+    const expires_at = new Date(Date.now() + 10 * 60 * 1000);
+
+    await createOtp(user.id, otp_hash, "reset_password", expires_at);
+    await sendOtpEmail(email, otp);
+
+    return res
+      .status(200)
+      .json({ success: true, message: "OTP sent sucessfully" });
+  } catch (error) {
+    console.error("Forgot password error", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
 
 
-export { register, login, verifyEmail, resendEmail };
+
+export {
+  register,
+  login,
+  verifyEmail,
+  resendEmail,
+  logout,
+  forgotPassword,
+  forgotPassword,
+};
