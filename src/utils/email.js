@@ -27,36 +27,37 @@
 
 // export { sendOtpEmail };
 
-import {
-  TransactionalEmailsApi,
-  SendSmtpEmail,
-  TransactionalEmailsApiApiKeys,
-} from "@getbrevo/brevo";
-
-const apiInstance = new TransactionalEmailsApi();
-apiInstance.setApiKey(
-  TransactionalEmailsApiApiKeys.apiKey,
-  process.env.BREVO_API_KEY,
-);
-
 const sendOtpEmail = async (email, otp) => {
-  const sendSmtpEmail = new brevo.SendSmtpEmail();
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "api-key": process.env.BREVO_API_KEY,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      sender: {
+        email: process.env.SENDER_EMAIL,
+        name: "Warden",
+      },
+      to: [{ email }],
+      subject: "Your Warden OTP Code",
+      htmlContent: `
+                <h2>Email Verification</h2>
+                <p>Your OTP code is:</p>
+                <h1>${otp}</h1>
+                <p>Expires in 10 minutes.</p>
+                <p>If you didn't request this, ignore this email.</p>
+            `,
+    }),
+  });
 
-  sendSmtpEmail.subject = "Your Warden OTP Code";
-  sendSmtpEmail.to = [{ email: email }];
-  sendSmtpEmail.sender = {
-    email: process.env.SENDER_EMAIL,
-    name: "Warden",
-  };
-  sendSmtpEmail.htmlContent = `
-        <h2>Email Verification</h2>
-        <p>Your OTP code is:</p>
-        <h1>${otp}</h1>
-        <p>This code expires in 10 minutes.</p>
-        <p>If you didn't request this, ignore this email.</p>
-    `;
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(`Email sending failed: ${error.message}`);
+  }
 
-  await apiInstance.sendTransacEmail(sendSmtpEmail);
+  return response.json();
 };
 
 export { sendOtpEmail };
