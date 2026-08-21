@@ -2,6 +2,8 @@
 
 A production-ready authentication REST API built with Node.js, Express, and PostgreSQL. Warden handles the full authentication lifecycle including registration, email verification, login, password reset, and session management.
 
+https://warden-femi.onrender.com
+
 ---
 
 ## Features
