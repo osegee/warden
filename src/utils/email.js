@@ -55,6 +55,8 @@ const sendOtpEmail = async (email, otp) => {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(`Email sending failed: ${error.message}`);
+  } else {
+    console.log("OTP sent successfully");
   }
 
   return response.json();
