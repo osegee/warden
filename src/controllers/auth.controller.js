@@ -6,6 +6,8 @@ import {
   findUserByEmail,
   updatePassword,
   verifyUser,
+  findUserById,
+  deleteUser,
 } from "../models/user.js";
 import {
   createOtp,
@@ -17,7 +19,6 @@ import {
 import { createToken, findRefreshToken, revokeToken } from "../models/token.js";
 import { signAccessToken, signRefreshToken } from "../utils/jwt.js";
 import { pool } from "../config/db.js";
-import { response } from "express";
 
 const register = async (req, res) => {
   const client = await pool.connect();
@@ -424,6 +425,51 @@ const resetPassword = async (req, res) => {
       .json({ success: false, message: "internal server error" });
   }
 };
+const deleteAccount = async (req, res) => {
+  try {
+    const { password } = req.body;
+    const { id } = req.user;
+
+    const user = await findUserById(id);
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const isMatch = await comparePassword(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Incorrect password",
+      });
+    }
+
+    await deleteUser(id);
+
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+    });
+
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+    return res
+      .status(200)
+      .json({ success: true, message: "Account deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+};
 
 export {
   register,
@@ -433,4 +479,5 @@ export {
   logout,
   forgotPassword,
   resetPassword,
+  deleteAccount,
 };

@@ -8,6 +8,15 @@ const findUserByEmail = async (email) => {
   return result.rows[0];
 };
 
+const findUserById = async (id) => {
+  const result = await pool.query(`SELECT * FROM users WHERE id = $1`, [id]);
+
+  return result.rows[0];
+};
+
+const deleteUser = async (id) => {
+  const result = await pool.query(`DELETE FROM users WHERE id = $1`, [id]);
+};
 const createUser = async (username, email, password, client = pool) => {
   const result = await client.query(
     `INSERT INTO users (username, email, password) VALUES($1, $2, $3) RETURNING id, username, email, is_verified, created_at`,
@@ -31,4 +40,11 @@ const updatePassword = async (password, user_id) => {
   return result.rows[0];
 };
 
-export { findUserByEmail, createUser, verifyUser, updatePassword };
+export {
+  findUserByEmail,
+  createUser,
+  verifyUser,
+  updatePassword,
+  findUserById,
+  deleteUser,
+};
