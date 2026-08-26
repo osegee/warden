@@ -17,7 +17,11 @@ import {
   markOtpAsUsed,
 } from "../models/otp.js";
 import { createToken, findRefreshToken, revokeToken } from "../models/token.js";
-import { signAccessToken, signRefreshToken } from "../utils/jwt.js";
+import {
+  signAccessToken,
+  signRefreshToken,
+  verifyToken,
+} from "../utils/jwt.js";
 import { pool } from "../config/db.js";
 
 const register = async (req, res) => {
@@ -471,6 +475,77 @@ const deleteAccount = async (req, res) => {
   }
 };
 
+const refreshToken = async (req, res) => {
+  try {
+    const token = req.cookies.refreshToken;
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "Refresh token missing",
+      });
+    }
+    const tokenRecord = await findRefreshToken(token);
+    if (!tokenRecord) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token",
+      });
+    }
+    if (tokenRecord.is_revoked) {
+      return res.status(401).json({
+        success: false,
+        message: "Token revoked",
+      });
+    }
+    if (new Date(tokenRecord.expires_at) < new Date()) {
+      return res.status(401).json({
+        success: false,
+        message: "Token expired",
+      });
+    }
+
+    const decoded = verifyToken(token, process.env.JWT_REFRESH_SECRET);
+
+    await revokeToken(tokenRecord.id);
+
+    const newAccessToken = signAccessToken(decoded.id);
+    const newRefreshToken = signRefreshToken(decoded.id);
+
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await createToken(
+      decoded.id,
+      newRefreshToken,
+      req.ip,
+      req.headers["user-agent"],
+      expiresAt,
+    );
+
+    res.cookie("accessToken", newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000,
+    });
+    res.cookie("refreshToken", newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Token refeshed successfully",
+    });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+};
+
 export {
   register,
   login,
@@ -480,4 +555,5 @@ export {
   forgotPassword,
   resetPassword,
   deleteAccount,
+  refreshToken,
 };
