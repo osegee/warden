@@ -15,19 +15,34 @@ import {
   authLimiter,
   sensitiveLimiter,
 } from "../middlewares/rateLimit.middleware.js";
+import { validate } from "../middlewares/validate.middleware.js";
+import {
+  loginSchema,
+  verifyEmailSchema,
+  resendOtpSchema,
+  registerSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  deleteAccountSchema,
+} from "../validators/auth.validator.js";
 
 const router = Router();
 
 router.use(authLimiter);
 
-router.post("/register", sensitiveLimiter, register);
-router.post("/login", sensitiveLimiter, login);
-router.post("/verify-email", verifyEmail);
-router.post("/resend-email", resendOtp);
+router.post("/register", sensitiveLimiter, validate(registerSchema), register);
+router.post("/login", sensitiveLimiter, validate(loginSchema), login);
+router.post("/verify-email", validate(verifyEmailSchema), verifyEmail);
+router.post("/resend-email", validate(resendOtpSchema), resendOtp);
 router.post("/logout", protect, logout);
-router.post("/forgot-password", sensitiveLimiter, forgotPassword);
-router.post("/reset-password", resetPassword);
+router.post(
+  "/forgot-password",
+  sensitiveLimiter,
+  validate(forgotPasswordSchema),
+  forgotPassword,
+);
+router.post("/reset-password", validate(resetPasswordSchema), resetPassword);
 router.delete("/delete-account", protect, deleteAccount);
-router.post("/refresh-token", refreshToken);
+router.post("/refresh-token", validate(deleteAccountSchema), refreshToken);
 
 export default router;
