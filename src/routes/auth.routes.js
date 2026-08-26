@@ -42,7 +42,12 @@ router.post(
   forgotPassword,
 );
 router.post("/reset-password", validate(resetPasswordSchema), resetPassword);
-router.delete("/delete-account", protect, deleteAccount);
-router.post("/refresh-token", validate(deleteAccountSchema), refreshToken);
+router.delete(
+  "/delete-account",
+  validate(deleteAccountSchema),
+  protect,
+  deleteAccount,
+);
+router.post("/refresh-token", refreshToken);
 
 export default router;
