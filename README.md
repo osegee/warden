@@ -2,7 +2,7 @@
 
 An authentication REST API built with Node.js, Express, and PostgreSQL. Warden handles the full authentication lifecycle including registration, email verification, login with cookie-based JWT, password reset, token rotation, and account deletion.
 
-**Live API:** `https://your-vercel-url.vercel.app`
+**Live API:** `warden-seven-nu.vercel.app`
 
 ---
 
