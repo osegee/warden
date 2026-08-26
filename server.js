@@ -6,6 +6,7 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import { connectDB } from "./src/config/db.js";
 import authRouter from "./src/routes/auth.routes.js";
+import { globalLimiter } from "./src/middlewares/rateLimit.middleware.js";
 
 const app = express();
 
@@ -17,6 +18,7 @@ process.env.NODE_ENV === "production"
   ? app.use(morgan("combined"))
   : app.use(morgan("dev"));
 
+app.use(globalLimiter);
 app.get("/", (req, res) => {
   res.json({
     name: "Warden",

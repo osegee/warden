@@ -234,7 +234,7 @@ const verifyEmail = async (req, res) => {
   }
 };
 
-const resendEmail = async (req, res) => {
+const resendOtp = async (req, res) => {
   try {
     const { email, purpose } = req.body;
 
@@ -550,7 +550,7 @@ export {
   register,
   login,
   verifyEmail,
-  resendEmail,
+  resendOtp,
   logout,
   forgotPassword,
   resetPassword,

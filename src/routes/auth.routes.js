@@ -3,7 +3,7 @@ import {
   register,
   login,
   verifyEmail,
-  resendEmail,
+  resendOtp,
   logout,
   forgotPassword,
   resetPassword,
@@ -11,17 +11,23 @@ import {
   refreshToken,
 } from "../controllers/auth.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
+import {
+  authLimiter,
+  sensitiveLimiter,
+} from "../middlewares/rateLimit.middleware.js";
 
 const router = Router();
 
-router.post("/register", register);
-router.post("/login", login);
+router.use(authLimiter);
+
+router.post("/register", sensitiveLimiter, register);
+router.post("/login", sensitiveLimiter, login);
 router.post("/verify-email", verifyEmail);
-router.post("/resend-email", resendEmail);
+router.post("/resend-email", resendOtp);
 router.post("/logout", protect, logout);
-router.post("/forgot-password", forgotPassword);
+router.post("/forgot-password", sensitiveLimiter, forgotPassword);
 router.post("/reset-password", resetPassword);
-router.post("/delete-account", protect, deleteAccount);
+router.delete("/delete-account", protect, deleteAccount);
 router.post("/refresh-token", refreshToken);
 
 export default router;
