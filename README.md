@@ -1,6 +1,6 @@
 # Warden 🛡️
 
-A production-ready authentication API built with Node.js and PostgreSQL.
+An authentication API built with Node.js and PostgreSQL.
 
 **Base URL:** `https://warden-seven-nu.vercel.app`
 
