@@ -1,4 +1,4 @@
-# Warden 🛡️
+# Warden
 
 An authentication API built with Node.js and PostgreSQL.
 
