@@ -8,10 +8,9 @@ const swaggerSpec = {
   },
   servers: [
     {
-      // 1. Put Railway FIRST so Swagger defaults to the live server online
       url: process.env.RAILWAY_PUBLIC_DOMAIN
         ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-        : "warden-production-de8d.up.railway.app", // paste your actual generated domain here
+        : "warden-production-de8d.up.railway.app", 
       description: "Railway production server",
     },
     {
