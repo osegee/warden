@@ -23,6 +23,11 @@ process.env.NODE_ENV === "production"
   : app.use(morgan("dev"));
 
 app.use(globalLimiter);
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get("/docs.json", (req, res) => {
+  res.status(200).json(swaggerSpec);
+});
+
 app.get("/", (req, res) => {
   res.json({
     name: "Warden",
