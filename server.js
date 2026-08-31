@@ -24,15 +24,7 @@ process.env.NODE_ENV === "production"
 
 app.use(globalLimiter);
 
-const CSS_URL = "https://cloudflare.com";
-const JS_URL = ["https://cloudflare.com", "https://cloudflare.com"];
-
-const swaggerOptions = {
-  customCssUrl: CSS_URL,
-  customJs: JS_URL,
-};
-
-app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerOptions));
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get("/docs.json", (req, res) => {
   res.status(200).json(swaggerSpec);
 });
