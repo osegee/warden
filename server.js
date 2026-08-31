@@ -23,7 +23,16 @@ process.env.NODE_ENV === "production"
   : app.use(morgan("dev"));
 
 app.use(globalLimiter);
-app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+const CSS_URL = "https://cloudflare.com";
+const JS_URL = ["https://cloudflare.com", "https://cloudflare.com"];
+
+const swaggerOptions = {
+  customCssUrl: CSS_URL,
+  customJs: JS_URL,
+};
+
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerOptions));
 app.get("/docs.json", (req, res) => {
   res.status(200).json(swaggerSpec);
 });
