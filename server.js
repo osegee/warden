@@ -4,9 +4,11 @@ import morgan from "morgan";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
+import swaggerUi from "swagger-ui-express";
 import { connectDB } from "./src/config/db.js";
 import authRouter from "./src/routes/auth.routes.js";
 import { globalLimiter } from "./src/middlewares/rateLimit.middleware.js";
+import swaggerSpec from "./src/docs/swagger.js";
 
 const app = express();
 
@@ -33,6 +35,21 @@ app.get("/", (req, res) => {
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
+
+app.get("/api-docs.json", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  res.send(swaggerSpec);
+});
+
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    customSiteTitle: "Warden API Documentation",
+    customCss: ".swagger-ui .topbar { display: none; }",
+  }),
+);
+
 app.use("/api/v1/auth", authRouter);
 
 const PORT = process.env.PORT || 5000;

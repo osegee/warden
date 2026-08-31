@@ -1,75 +1,50 @@
-# Warden
+﻿# Warden
 
-An authentication API built with Node.js and PostgreSQL.
+Warden is a lightweight authentication API built with Node.js, Express, PostgreSQL, and JWT-based cookie auth. 
 
-**Base URL:** `https://warden-seven-nu.vercel.app`
+## Overview
 
----
+- Base URL: `http://localhost:5000` for local development
+- Public routes: `/` and `/health`
+- Auth API prefix: `/api/v1/auth`
 
 ## Stack
 
-- **Runtime:** Node.js
-- **Framework:** Express.js
-- **Database:** PostgreSQL (Neon)
-- **Hosting:** Vercel
+- Runtime: Node.js
+- Framework: Express.js
+- Database: PostgreSQL
+- Auth: JWT (access + refresh tokens)
+- Email delivery: Brevo / SMTP
+- Validation: Zod
 
----
-
-## Features
-
-- Register with email OTP verification
-- Login with JWT (httpOnly cookies)
-- Refresh token rotation
-- Forgot & reset password via OTP
-- Account deletion with password confirmation
-- Rate limiting & input validation
-
----
-
-## Endpoints
-
-| Method | Endpoint           | Auth | Description             |
-| ------ | ------------------ | ---- | ----------------------- |
-| POST   | `/register`        | No   | Create account          |
-| POST   | `/login`           | No   | Login                   |
-| POST   | `/verify-email`    | No   | Verify email with OTP   |
-| POST   | `/resend-otp`      | No   | Resend OTP              |
-| POST   | `/forgot-password` | No   | Request password reset  |
-| POST   | `/reset-password`  | No   | Reset password with OTP |
-| POST   | `/logout`          | Yes  | Logout                  |
-| POST   | `/refresh-token`   | No   | Refresh access token    |
-| DELETE | `/delete-account`  | Yes  | Delete account          |
-
----
-
-## Setup
+## Local setup
 
 ```bash
-git clone https://github.com/yourusername/warden.git
+git clone https://github.com/osegee/warden.git
 cd warden
 npm install
 cp .env.example .env
-node src/config/migrate.js
 npm run dev
 ```
 
-## Environment Variables
+## Environment variables
 
 ```bash
 PORT=5000
 NODE_ENV=development
 CLIENT_URL=http://localhost:3000
-DATABASE_URL=
-JWT_ACCESS_SECRET=
+DATABASE_URL=******host:5432/dbname
+
+JWT_ACCESS_SECRET=your_access_secret
 JWT_ACCESS_EXPIRES_IN=15m
-JWT_REFRESH_SECRET=
+JWT_REFRESH_SECRET=your_refresh_secret
 JWT_REFRESH_EXPIRES_IN=7d
-BREVO_API_KEY=
-SENDER_EMAIL=
+
+BREVO_API_KEY=your_brevo_api_key
+SENDER_EMAIL=no-reply@example.com
+EMAIL_FROM=Your App <no-reply@example.com>
 ```
 
----
-
-## Database Schema
+## Database schema
 
 ![warden ERD](./warden-ERD.png)
