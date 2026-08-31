@@ -8,12 +8,15 @@ const swaggerSpec = {
   },
   servers: [
     {
-      url: "http://localhost:5000",
-      description: "Local development server",
+      // 1. Put Railway FIRST so Swagger defaults to the live server online
+      url: process.env.RAILWAY_PUBLIC_DOMAIN
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : "https://warden-production-e630.up.railway.app", // paste your actual generated domain here
+      description: "Railway production server",
     },
     {
-      url: "https://warden-seven-nu.vercel.app",
-      description: "Production server",
+      url: "http://localhost:5000",
+      description: "Local development server",
     },
   ],
   tags: [
@@ -38,7 +41,8 @@ const swaggerSpec = {
         type: "apiKey",
         in: "cookie",
         name: "refreshToken",
-        description: "Refresh token stored in an HTTP-only cookie for token rotation.",
+        description:
+          "Refresh token stored in an HTTP-only cookie for token rotation.",
       },
     },
     schemas: {
@@ -63,31 +67,60 @@ const swaggerSpec = {
         required: ["username", "email", "password"],
         properties: {
           username: { type: "string", example: "johndoe" },
-          email: { type: "string", format: "email", example: "john@example.com" },
-          password: { type: "string", format: "password", example: "Password123" },
+          email: {
+            type: "string",
+            format: "email",
+            example: "john@example.com",
+          },
+          password: {
+            type: "string",
+            format: "password",
+            example: "Password123",
+          },
         },
       },
       LoginRequest: {
         type: "object",
         required: ["email", "password"],
         properties: {
-          email: { type: "string", format: "email", example: "john@example.com" },
-          password: { type: "string", format: "password", example: "Password123" },
+          email: {
+            type: "string",
+            format: "email",
+            example: "john@example.com",
+          },
+          password: {
+            type: "string",
+            format: "password",
+            example: "Password123",
+          },
         },
       },
       VerifyEmailRequest: {
         type: "object",
         required: ["email", "otp"],
         properties: {
-          email: { type: "string", format: "email", example: "john@example.com" },
-          otp: { type: "string", example: "123456", minLength: 6, maxLength: 6 },
+          email: {
+            type: "string",
+            format: "email",
+            example: "john@example.com",
+          },
+          otp: {
+            type: "string",
+            example: "123456",
+            minLength: 6,
+            maxLength: 6,
+          },
         },
       },
       ResendEmailRequest: {
         type: "object",
         required: ["email", "purpose"],
         properties: {
-          email: { type: "string", format: "email", example: "john@example.com" },
+          email: {
+            type: "string",
+            format: "email",
+            example: "john@example.com",
+          },
           purpose: { type: "string", example: "verify_email" },
         },
       },
@@ -95,23 +128,44 @@ const swaggerSpec = {
         type: "object",
         required: ["email"],
         properties: {
-          email: { type: "string", format: "email", example: "john@example.com" },
+          email: {
+            type: "string",
+            format: "email",
+            example: "john@example.com",
+          },
         },
       },
       ResetPasswordRequest: {
         type: "object",
         required: ["email", "otp", "newPassword"],
         properties: {
-          email: { type: "string", format: "email", example: "john@example.com" },
-          otp: { type: "string", example: "123456", minLength: 6, maxLength: 6 },
-          newPassword: { type: "string", format: "password", example: "NewPassword123" },
+          email: {
+            type: "string",
+            format: "email",
+            example: "john@example.com",
+          },
+          otp: {
+            type: "string",
+            example: "123456",
+            minLength: 6,
+            maxLength: 6,
+          },
+          newPassword: {
+            type: "string",
+            format: "password",
+            example: "NewPassword123",
+          },
         },
       },
       DeleteAccountRequest: {
         type: "object",
         required: ["password"],
         properties: {
-          password: { type: "string", format: "password", example: "Password123" },
+          password: {
+            type: "string",
+            format: "password",
+            example: "Password123",
+          },
         },
       },
     },
@@ -143,7 +197,8 @@ const swaggerSpec = {
       get: {
         tags: ["System"],
         summary: "Health check",
-        description: "Checks if the app is running and ready to accept requests.",
+        description:
+          "Checks if the app is running and ready to accept requests.",
         responses: {
           200: {
             description: "Healthy service",
@@ -185,9 +240,30 @@ const swaggerSpec = {
               },
             },
           },
-          400: { description: "Validation or missing input error", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
-          409: { description: "User already exists", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
-          500: { description: "Internal server error", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
+          400: {
+            description: "Validation or missing input error",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          409: {
+            description: "User already exists",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          500: {
+            description: "Internal server error",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
         },
       },
     },
@@ -218,10 +294,38 @@ const swaggerSpec = {
               },
             },
           },
-          401: { description: "Incorrect password", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
-          403: { description: "Email not verified", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
-          409: { description: "User does not exist", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
-          500: { description: "Internal server error", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
+          401: {
+            description: "Incorrect password",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          403: {
+            description: "Email not verified",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          409: {
+            description: "User does not exist",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          500: {
+            description: "Internal server error",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
         },
       },
     },
@@ -229,7 +333,8 @@ const swaggerSpec = {
       post: {
         tags: ["Authentication"],
         summary: "Verify a user email with OTP",
-        description: "Verifies the email address using the OTP sent during registration.",
+        description:
+          "Verifies the email address using the OTP sent during registration.",
         requestBody: {
           required: true,
           content: {
@@ -251,9 +356,30 @@ const swaggerSpec = {
               },
             },
           },
-          400: { description: "Invalid, expired, or used OTP", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
-          409: { description: "User not found", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
-          500: { description: "Internal server error", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
+          400: {
+            description: "Invalid, expired, or used OTP",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          409: {
+            description: "User not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          500: {
+            description: "Internal server error",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
         },
       },
     },
@@ -284,9 +410,30 @@ const swaggerSpec = {
               },
             },
           },
-          400: { description: "Invalid request or already verified user", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
-          404: { description: "User not found", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
-          500: { description: "Internal server error", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
+          400: {
+            description: "Invalid request or already verified user",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          404: {
+            description: "User not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          500: {
+            description: "Internal server error",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
         },
       },
     },
@@ -310,9 +457,30 @@ const swaggerSpec = {
               },
             },
           },
-          401: { description: "Access token missing or invalid", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
-          404: { description: "Token not found", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
-          500: { description: "Internal server error", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
+          401: {
+            description: "Access token missing or invalid",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          404: {
+            description: "Token not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          500: {
+            description: "Internal server error",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
         },
       },
     },
@@ -320,7 +488,8 @@ const swaggerSpec = {
       post: {
         tags: ["Authentication"],
         summary: "Send password-reset OTP",
-        description: "Sends a password reset OTP to the supplied email address.",
+        description:
+          "Sends a password reset OTP to the supplied email address.",
         requestBody: {
           required: true,
           content: {
@@ -342,8 +511,22 @@ const swaggerSpec = {
               },
             },
           },
-          404: { description: "User not found", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
-          500: { description: "Internal server error", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
+          404: {
+            description: "User not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          500: {
+            description: "Internal server error",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
         },
       },
     },
@@ -351,7 +534,8 @@ const swaggerSpec = {
       post: {
         tags: ["Authentication"],
         summary: "Reset a user's password",
-        description: "Resets the password after validating the email and OTP provided by the user.",
+        description:
+          "Resets the password after validating the email and OTP provided by the user.",
         requestBody: {
           required: true,
           content: {
@@ -373,8 +557,22 @@ const swaggerSpec = {
               },
             },
           },
-          400: { description: "Missing fields, invalid OTP, or expired OTP", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
-          500: { description: "Internal server error", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
+          400: {
+            description: "Missing fields, invalid OTP, or expired OTP",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          500: {
+            description: "Internal server error",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
         },
       },
     },
@@ -406,9 +604,30 @@ const swaggerSpec = {
               },
             },
           },
-          400: { description: "Password mismatch or user not found", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
-          401: { description: "Access token missing or invalid", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
-          500: { description: "Internal server error", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
+          400: {
+            description: "Password mismatch or user not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          401: {
+            description: "Access token missing or invalid",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          500: {
+            description: "Internal server error",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
         },
       },
     },
@@ -432,8 +651,22 @@ const swaggerSpec = {
               },
             },
           },
-          401: { description: "Refresh token missing, invalid, revoked, or expired", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
-          500: { description: "Internal server error", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
+          401: {
+            description: "Refresh token missing, invalid, revoked, or expired",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          500: {
+            description: "Internal server error",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
         },
       },
     },
